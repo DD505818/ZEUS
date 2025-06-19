@@ -1,0 +1,4 @@
+Agent,ROI (%),Win Rate (%),Trades Executed,Sharpe Ratio,Max Drawdown (%)
+QuantumBoost,14.1,92.0,502,4.1,-2.1
+RSIHeikinSniper,10.3,89.4,438,3.6,-1.8
+MomentumGatekeeper,6.9,87.8,344,3.2,-2.5

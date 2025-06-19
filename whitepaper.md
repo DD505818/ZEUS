@@ -1,0 +1,1 @@
+[See canvas document Trade-logic-deep-dive for full content.]
