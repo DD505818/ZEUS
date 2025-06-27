@@ -20,7 +20,7 @@ ZEUS_API_URL = os.getenv("ZEUS_API_URL", "http://zeus-api:8000")
 def trigger_system_optimize():
     endpoint = f"{ZEUS_API_URL}/system/optimize"
     try:
-        response = requests.post(endpoint)
+        response = requests.post(endpoint, timeout=10)
         response.raise_for_status()
         logger.info("System optimization triggered")
     except requests.exceptions.RequestException as exc:
@@ -31,7 +31,7 @@ def trigger_ai_model_training():
     endpoint = f"{ZEUS_API_URL}/ai/train_models"
     payload = {"model_type": "LSTMForecaster", "data_range": "daily_update", "gpu_accelerated": True}
     try:
-        response = requests.post(endpoint, json=payload)
+        response = requests.post(endpoint, json=payload, timeout=10)
         response.raise_for_status()
         logger.info("AI model training triggered")
     except requests.exceptions.RequestException as exc:
@@ -42,7 +42,7 @@ def trigger_strategy_generation():
     endpoint = f"{ZEUS_API_URL}/ai/generate_strategies"
     payload = {"analysis_period": "past_week_roi", "creativity_level": "high"}
     try:
-        response = requests.post(endpoint, json=payload)
+        response = requests.post(endpoint, json=payload, timeout=10)
         response.raise_for_status()
         logger.info("Strategy generation triggered")
     except requests.exceptions.RequestException as exc:
