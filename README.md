@@ -7,3 +7,7 @@ This repository contains a minimal prototype of the ZEUS°NXTLVL autonomous trad
 - Nightly capital boost logic for rapid compounding
 - Example trade engine wiring agents together
 
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and replace the placeholder values with your real credentials. The application reads all configuration from environment variables. **Do not commit real secrets to version control.**
