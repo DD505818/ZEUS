@@ -7,6 +7,9 @@ class RSIDivergenceSniper:
         self.rsi_period = rsi_period
 
     def detect_entry(self, prices):
+        """Determine long/short entry based on RSI divergence."""
+        if len(prices) < self.rsi_period:
+            return None
         rsi = talib.RSI(np.array(prices), timeperiod=self.rsi_period)
         oversold = rsi[-1] < 30
         overbought = rsi[-1] > 70
