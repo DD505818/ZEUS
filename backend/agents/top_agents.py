@@ -11,6 +11,7 @@ import pandas as pd
 
 from .base import AbstractAgent
 from ..core.analytics import calc_ema, calc_rsi, calc_macd, heikin_ashi
+from ..core.risk import confidence_gate
 from ..core.services import redis_pub
 
 
@@ -29,7 +30,8 @@ class QuantumBoostAgent(AbstractAgent):
             and rsi_val < 30
             and df["volume"].iloc[-1] > vol_avg20
         ):
-            return "BUY", 0.95
+            action = confidence_gate("BUY", 0.95)
+            return action, 0.95 if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
@@ -48,8 +50,9 @@ class PredictiveProphetAgent(AbstractAgent):
         X = features[-60:].astype("float32").reshape(1, 60, 5)
         prob = float(self.model.predict(X))
         if prob > 0.52:
-            conf = 0.95 + (prob - 0.52) * 0.4
-            return "BUY", min(conf, 0.99)
+            conf = min(0.95 + (prob - 0.52) * 0.4, 0.99)
+            action = confidence_gate("BUY", conf)
+            return action, conf if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
@@ -63,7 +66,8 @@ class HeikinBreakoutAgent(AbstractAgent):
         macd_hist = calc_macd(candles["close"]).iloc[-1]
         if ha["close"].iloc[-1] > ha["open"].iloc[-1] and macd_hist > 0:
             conf = min(0.95 + macd_hist * 10, 0.98)
-            return "BUY", conf
+            action = confidence_gate("BUY", conf)
+            return action, conf if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
@@ -78,7 +82,8 @@ class VWAPScalperXAgent(AbstractAgent):
         vwap = np.dot(prices[-30:], vols[-30:]) / vols[-30:].sum()
         rs = calc_rsi(pd.Series(prices[-14:]), 14).iloc[-1]
         if prices[-1] < vwap and rs < 30:
-            return "BUY", 0.96
+            action = confidence_gate("BUY", 0.96)
+            return action, 0.96 if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
@@ -91,7 +96,8 @@ class RSIHeikinSniperAgent(AbstractAgent):
         rsi_val = calc_rsi(df["close"], 14).iloc[-1]
         ha = heikin_ashi(df.tail(6))
         if rsi_val < 30 and ha["close"].iloc[-1] > ha["open"].iloc[-1]:
-            return "BUY", 0.94
+            action = confidence_gate("BUY", 0.94)
+            return action, 0.94 if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
@@ -108,7 +114,8 @@ class GapSniperAgent(AbstractAgent):
             and df["close"].iloc[-1] > df["open"].iloc[-1]
             and df["volume"].iloc[-1] > df["volume"].mean()
         ):
-            return "BUY", 0.93
+            action = confidence_gate("BUY", 0.93)
+            return action, 0.93 if action == "BUY" else 0.0
         return "NONE", 0.0
 
 
