@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+zeus-nxtlvl/frontend/node_modules/
+.env
+zeus-nxtlvl/.env

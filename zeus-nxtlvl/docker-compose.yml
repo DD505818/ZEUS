@@ -1,0 +1,158 @@
+version: '3.9'
+
+services:
+ # ZEUS Backend API (FastAPI)
+ zeus-api:
+  build:
+   context: ./backend
+   dockerfile: Dockerfile
+  container_name: zeus_api
+  ports:
+   - "${API_PORT}:${API_PORT}" # Expose FastAPI port
+  env_file:
+   - ./.env # Load environment variables for FastAPI
+  depends_on:
+   zeus-postgres:
+    condition: service_healthy
+   zeus-redis:
+    condition: service_healthy
+   zeus-qdrant:
+    condition: service_started # Qdrant doesn't have a direct healthcheck
+  volumes:
+   - ./backend:/app/backend # Mount backend code for easier development and debugging
+  command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "${API_PORT}", "--workers", "2"]
+  healthcheck: # Basic health check for the backend API
+   test: ["CMD", "curl", "-f", "http://localhost:${API_PORT}/health"]
+   interval: 10s
+   timeout: 5s
+   retries: 5
+
+ # ZEUS Frontend Dashboard (Next.js)
+ zeus-frontend:
+  build:
+   context: ./frontend # Build from frontend/Dockerfile
+   dockerfile: Dockerfile
+  container_name: zeus_frontend
+  ports:
+   - "3000:3000" # Expose Next.js default port
+  depends_on:
+   zeus-api:
+    condition: service_healthy # Ensure backend is ready
+  volumes:
+   - ./frontend:/app # Mount frontend code
+   - /app/node_modules # Avoid overwriting node_modules during mount
+  command: ["npm", "run", "dev"] # For development with hot-reloading
+
+ # PostgreSQL Database (with TimescaleDB extension)
+ zeus-postgres:
+  image: timescale/timescaledb:latest-pg16 # Using TimescaleDB image based on PostgreSQL 16
+  container_name: zeus_postgres
+  ports:
+   - "5432:5432"
+  environment:
+   POSTGRES_DB: ${POSTGRES_DB}
+   POSTGRES_USER: ${POSTGRES_USER}
+   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  volumes:
+   - postgres_data:/var/lib/postgresql/data # Persistent data for the DB
+  healthcheck: # Health check for PostgreSQL
+   test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+   interval: 5s
+   timeout: 5s
+   retries: 5
+
+ # Redis Cache and Pub/Sub
+ zeus-redis:
+  image: redis:7-alpine
+  container_name: zeus_redis
+  ports:
+   - "6379:6379"
+  command: redis-server --appendonly yes # Enable AOF persistence
+  volumes:
+   - redis_data:/data # Persistent data for Redis
+  healthcheck: # Health check for Redis
+   test: ["CMD", "redis-cli", "ping"]
+   interval: 5s
+   timeout: 3s
+   retries: 5
+
+ # Qdrant Vector Database
+ zeus-qdrant:
+  image: qdrant/qdrant:latest
+  container_name: zeus_qdrant
+  ports:
+   - "6333:6333" # Qdrant API port
+   - "6334:6334" # Qdrant gRPC port
+  volumes:
+   - qdrant_data:/qdrant/storage # Persistent data for Qdrant
+
+ # Real-time PnL Engine
+ zeus-pnl-engine:
+  build:
+   context: ./backend
+   dockerfile: Dockerfile
+  container_name: zeus_pnl_engine
+  env_file:
+   - ./.env
+  environment:
+   REDIS_URL: redis://zeus-redis:6379 # Connect to Redis service name
+  depends_on:
+   zeus-redis:
+    condition: service_healthy
+  command: ["python", "-m", "backend.analytics.pnl_engine"]
+
+ # Prometheus Analytics Exporter
+ zeus-analytics-exporter:
+  build:
+   context: ./backend
+   dockerfile: Dockerfile
+  container_name: zeus_analytics_exporter
+  ports:
+   - "${METRICS_PORT}:${METRICS_PORT}" # Expose Prometheus metrics port
+  env_file:
+   - ./.env
+  environment:
+   REDIS_URL: redis://zeus-redis:6379
+   METRICS_PORT: ${METRICS_PORT}
+  depends_on:
+   zeus-redis:
+    condition: service_healthy
+  command: ["python", "-m", "backend.analytics.analytics_exporter"]
+
+ # Airflow UI & Scheduler (for background automation DAGs)
+ airflow:
+  image: apache/airflow:2.8.0-python3.10
+  container_name: airflow_zeus
+  ports:
+   - "8080:8080" # Airflow UI
+  environment:
+   - AIRFLOW__CORE__EXECUTOR=SequentialExecutor # Or LocalExecutor/KubernetesExecutor in prod
+   - AIRFLOW__CORE__FERNET_KEY=YOUR_FERNET_KEY_HERE # Generate a secure key for production
+   - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+   - AIRFLOW__CORE__LOAD_EXAMPLES=False
+   - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://$$POSTGRES_USER:$$POSTGRES_PASSWORD@zeus-postgres:5432/$$POSTGRES_DB # Connect to DB
+   - POSTGRES_DB=${POSTGRES_DB}
+   - POSTGRES_USER=${POSTGRES_USER}
+   - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+   # Backend API URL for DAGs to interact with
+   - ZEUS_API_URL=http://zeus-api:${API_PORT}
+  volumes:
+   - ./airflow_dag.py:/opt/airflow/dags/airflow_dag.py:ro # Read-only mount for DAG
+   - airflow_db_data:/opt/airflow/airflow-data/ # Persistent data for Airflow DB (if SequentialExecutor)
+  depends_on:
+   zeus-postgres:
+    condition: service_healthy
+   zeus-api: # Airflow DAGs might call the backend API
+    condition: service_healthy
+  command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname ZEUS --lastname Bot --role Admin --email zeus@ai.com || true && airflow scheduler & airflow webserver" # `|| true` to avoid errors if user already exists
+  healthcheck: # Health check for Airflow Webserver
+   test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+   interval: 10s
+   timeout: 5s
+   retries: 5
+
+volumes:
+ postgres_data: # Data volume for PostgreSQL
+ redis_data:    # Data volume for Redis
+ qdrant_data:   # Data volume for Qdrant
+ airflow_db_data: # Data volume for Airflow internal DB

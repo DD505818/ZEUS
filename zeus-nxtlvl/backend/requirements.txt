@@ -1,0 +1,22 @@
+# FastAPI and Web server
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+pydantic==2.7.1
+loguru
+
+# Database and Caching
+psycopg2-binary
+redis
+
+# Metrics
+prometheus_client
+
+# Misc
+requests
+qdrant-client
+pandas
+numpy
+google-generativeai
+google-api-python-client
+
+ccxt
