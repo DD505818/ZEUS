@@ -7,3 +7,12 @@ This repository contains a minimal prototype of the ZEUS°NXTLVL autonomous trad
 - Nightly capital boost logic for rapid compounding
 - Example trade engine wiring agents together
 
+## Running Tests
+
+Install dependencies and execute the test suite with `pytest`:
+
+```bash
+pip install -r requirements.txt numpy pandas
+pytest -v
+```
+
