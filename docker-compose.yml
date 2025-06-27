@@ -1,0 +1,26 @@
+version: '3.9'
+services:
+  zeus-api:
+    build: .
+    container_name: zeus_api
+    ports:
+      - "3000:3000"
+    environment:
+      - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 3000
+
+  airflow:
+    image: apache/airflow:2.8.0-python3.10
+    container_name: airflow_zeus
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__FERNET_KEY=xxx
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./airflow_dag.py:/opt/airflow/dags/airflow_dag.py
+    command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname ZEUS --lastname Bot --role Admin --email zeus@ai.com && airflow scheduler & airflow webserver"

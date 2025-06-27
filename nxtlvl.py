@@ -1,1 +1,3 @@
-# NXTLVL Compounding Engine
+"""NXTLVL compounding engine placeholder."""
+
+# Placeholder for advanced compounding logic.

@@ -1,17 +1,25 @@
 
+from typing import Dict, List
+
 from zeus_quantum_boost import QuantumBoost
 from rsi_divergence_sniper import RSIDivergenceSniper
 from momentum_killswitch import MomentumKillSwitch
 from risk_sentinel import RiskSentinel
 
+
 class ZeusTradeEngine:
-    def __init__(self):
+    """Coordinates individual signal modules into a simple trading decision."""
+
+    def __init__(self) -> None:
         self.qb = QuantumBoost()
         self.rsi = RSIDivergenceSniper()
         self.momentum = MomentumKillSwitch()
         self.risk = RiskSentinel()
 
-    def run(self, price_data, orderbook_data):
+    def run(
+        self, price_data: List[float], orderbook_data: Dict[str, float]
+    ) -> str:
+        """Return action based on current market snapshot."""
         if self.risk.detect_vol_spike(price_data):
             return "HALT"
 
