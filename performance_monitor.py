@@ -1,1 +1,3 @@
-# Compounding Growth Stats
+"""Performance monitoring utilities."""
+
+# Placeholder for statistics and monitoring helpers.

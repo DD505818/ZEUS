@@ -1,1 +1,3 @@
-[See canvas document Trade-logic-deep-dive for full content.]
+# Project Whitepaper Placeholder
+
+The full whitepaper content has been omitted from this demo repository.
