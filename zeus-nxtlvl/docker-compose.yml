@@ -1,0 +1,149 @@
+version: '3.9'
+
+services:
+  zeus-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zeus_api
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    env_file:
+      - ./.env
+    depends_on:
+      zeus-postgres:
+        condition: service_healthy
+      zeus-redis:
+        condition: service_healthy
+      zeus-qdrant:
+        condition: service_started
+    volumes:
+      - ./backend:/app/backend
+    command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "${API_PORT}", "--reload"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${API_PORT}/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zeus-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zeus_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      zeus-api:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  zeus-postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: zeus_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  zeus-redis:
+    image: redis:7-alpine
+    container_name: zeus_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  zeus-qdrant:
+    image: qdrant/qdrant:latest
+    container_name: zeus_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  zeus-pnl-engine:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zeus_pnl_engine
+    env_file:
+      - ./.env
+    environment:
+      REDIS_URL: redis://zeus-redis:6379
+    depends_on:
+      zeus-redis:
+        condition: service_healthy
+    command: ["python", "-m", "backend.analytics.pnl_engine"]
+
+  zeus-analytics-exporter:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zeus_analytics_exporter
+    ports:
+      - "${METRICS_PORT}:${METRICS_PORT}"
+    env_file:
+      - ./.env
+    environment:
+      REDIS_URL: redis://zeus-redis:6379
+      METRICS_PORT: ${METRICS_PORT}
+    depends_on:
+      zeus-redis:
+        condition: service_healthy
+    command: ["python", "-m", "backend.analytics.analytics_exporter"]
+
+  airflow:
+    image: apache/airflow:2.8.0-python3.10
+    container_name: airflow_zeus
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__FERNET_KEY=YOUR_FERNET_KEY_HERE
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://$$POSTGRES_USER:$$POSTGRES_PASSWORD@zeus-postgres:5432/$$POSTGRES_DB
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - ZEUS_API_URL=http://zeus-api:${API_PORT}
+    volumes:
+      - ./airflow_dag.py:/opt/airflow/dags/airflow_dag.py:ro
+      - airflow_db_data:/opt/airflow/airflow-data/
+    depends_on:
+      zeus-postgres:
+        condition: service_healthy
+      zeus-api:
+        condition: service_healthy
+    command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname ZEUS --lastname Bot --role Admin --email zeus@ai.com || true && airflow scheduler & airflow webserver"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  airflow_db_data:
