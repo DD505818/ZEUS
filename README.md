@@ -21,6 +21,15 @@ After installing requirements you can run the unit tests:
 python -m unittest discover tests
 ```
 
+## Code quality
+
+Optionally run style and security checks:
+
+```bash
+flake8 . --exclude=venv
+bandit -r . -q
+```
+
 ## Docker demo
 
 Build and launch the containers using docker compose:
