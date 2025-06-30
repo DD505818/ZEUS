@@ -1,7 +1,9 @@
 import os
 import requests
 
+
 WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL')
+
 
 def send_alert(message: str) -> None:
     if not WEBHOOK_URL:

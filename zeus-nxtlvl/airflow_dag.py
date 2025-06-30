@@ -5,6 +5,7 @@ import requests
 import os
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 default_args = {
@@ -15,7 +16,9 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
+
 ZEUS_API_URL = os.getenv("ZEUS_API_URL", "http://zeus-api:8000")
+
 
 def trigger_system_optimize():
     endpoint = f"{ZEUS_API_URL}/system/optimize"
@@ -27,9 +30,14 @@ def trigger_system_optimize():
         logger.error(f"Failed to optimize system: {exc}")
         raise
 
+
 def trigger_ai_model_training():
     endpoint = f"{ZEUS_API_URL}/ai/train_models"
-    payload = {"model_type": "LSTMForecaster", "data_range": "daily_update", "gpu_accelerated": True}
+    payload = {
+        "model_type": "LSTMForecaster",
+        "data_range": "daily_update",
+        "gpu_accelerated": True,
+    }
     try:
         response = requests.post(endpoint, json=payload, timeout=10)
         response.raise_for_status()
@@ -38,9 +46,13 @@ def trigger_ai_model_training():
         logger.error(f"Failed to train model: {exc}")
         raise
 
+
 def trigger_strategy_generation():
     endpoint = f"{ZEUS_API_URL}/ai/generate_strategies"
-    payload = {"analysis_period": "past_week_roi", "creativity_level": "high"}
+    payload = {
+        "analysis_period": "past_week_roi",
+        "creativity_level": "high",
+    }
     try:
         response = requests.post(endpoint, json=payload, timeout=10)
         response.raise_for_status()
@@ -48,6 +60,7 @@ def trigger_strategy_generation():
     except requests.exceptions.RequestException as exc:
         logger.error(f"Failed to generate strategies: {exc}")
         raise
+
 
 with DAG(
     'zeus_ai_automation_dag',
