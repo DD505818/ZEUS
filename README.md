@@ -1,5 +1,4 @@
 # ZEUS°NXTLVL GODMODE
-
 ZEUS is a full-stack autonomous trading system. It includes:
 
 - **Backend** built with FastAPI
@@ -36,3 +35,15 @@ python multi_agent_executor.py
 ```
 
 This will execute all agents on the provided data and print broker executions.
+=======
+This repository contains a minimal prototype of the ZEUS°NXTLVL autonomous trading system. It includes example agent implementations and a simple trade engine.
+
+## Features
+- Six trading agents for momentum and breakout strategies
+- Nightly capital boost logic for rapid compounding
+- Example trade engine wiring agents together
+
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and replace the placeholder values with your real credentials. The application reads all configuration from environment variables. **Do not commit real secrets to version control.**
