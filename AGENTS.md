@@ -1,116 +1,68 @@
 ZEUS°NXTLVL – AGENTS.md
 
-This file provides shared context for all ZEUS°NXTLVL AI trading agents.
-It instructs engineering agents (like Codex) how to contribute, test, and safely modify the `agents/` logic.
+This file provides shared context for all ZEUS°NXTLVL trading agents. It explains how to work with the agent modules that live directly in this repository.
 
 ──────────────────────────────────────────────
 📁 Directory Structure
 
-Work on the following files/folders only:
+Agent code resides in the following top-level modules:
+- `nxtlvl.py`              → collection of trading agents (QuantumBoostAgent, HeikinBreakout, etc.)
+- `zeus_trade_engine.py`   → runs the agents and aggregates signals
+- `zeus_quantum_boost.py`  → breakout detection helper
+- `rsi_divergence_sniper.py`, `momentum_killswitch.py`, `risk_sentinel.py`
+                           → supporting utilities
+- `agent_db.py`            → persistence layer stub
 
-/agents/
-├── base_agent.py        → Abstract interface for all agents
-├── ema_agent.py         → 50/200 EMA crossover logic
-├── breakout_agent.py    → Heikin Ashi + quantum resonance
-├── momentum_agent.py    → Volume + RSI/MACD-based agent
-├── risk_agent.py        → Position sizing, risk rules
-
-Also use if needed:
-- zeus.py               → Main agent execution router
-- backtest_engine.py    → Historical simulations
-- tests/agents/         → Agent test specs
+Other scripts such as `main.py` demonstrate a simple execution loop. There is no dedicated `agents/` directory or test suite at present.
 
 ──────────────────────────────────────────────
 ✅ How to Validate Changes
 
-1. Run agent unit tests:
-   $ pytest tests/agents/
+1. Format & Lint the project
+   $ ruff check .
+   $ black .
 
-2. Run backtest:
-   $ python backtest_engine.py --agent <AgentName>
+2. Manual run
+   $ python main.py
 
-3. Format & Lint:
-   $ ruff check agents/
-   $ black agents/
-
-4. (Optional) Live test with PM2:
-   $ pm2 start zeus.py --interpreter=python3 --name=<agent-name> -- --agent <AgentName>
+Unit tests are optional but may be added under a new `tests/` folder.
 
 ──────────────────────────────────────────────
 🧠 Agent Design Guidelines
 
-- Inherit from BaseAgent
-- Implement:
-    - analyze_market(data)
-    - generate_signal()
-    - execute_trade(signal, portfolio)
-- Signal must return: BUY, SELL, or HOLD
-- Use self.logger.info() for critical steps
-- Use async if connecting to live APIs
+- Keep agents stateless when possible
+- Use clear method names like `signal(data)` or `detect_*`
+- Signals should return `BUY`, `SELL`, or `HOLD`
+- Log important steps with `print()` or a logger
 
 ──────────────────────────────────────────────
 🔐 Secrets & Internet Access
 
-- Internet access is DISABLED by default.
-- Use .env or environment variables — NEVER hardcode secrets.
+- Internet access is disabled by default
+- Store secrets in a local `.env` file – do not commit new secret values
 
 ──────────────────────────────────────────────
-🛠 Setup Script (for CI or Codex container)
+🛠 Setup Example
 
-Example setup:
-
-# Formatters
-pip install black ruff
-
-# Dependencies
+```bash
 pip install -r requirements.txt
-
-# Testing
-pip install pytest
-
-Codex agents should follow AGENTS.txt and the rules in .github/workflows/agents.yml
-
-──────────────────────────────────────────────
-🚀 Deployment Rules
-
-- Support dry_run mode for all agents
-- NEVER live trade without risk control
-- Every agent must be backtestable + log signals & PnL
+pip install black ruff
+```
 
 ──────────────────────────────────────────────
 📝 PR Format
 
-Use this for PR and commit titles:
+Use commit titles like:
 
-  [agents/<AgentName>] Add feature XYZ
-  [agents/<AgentName>] Fix bug in market logic
+  `[core] Add feature description`
+  `[core] Fix issue description`
 
-Each PR must:
-- Include or update tests
-- Include backtest results
-- Pass all CI checks
+Include a short note about manual testing in each PR.
 
 ──────────────────────────────────────────────
-⚠️ Do NOT Touch:
+⚠️ Do NOT Touch
 
-- /infra/
-- main.py
-- .github/workflows/full_deploy.yml
-- .env.example
+- `deploy*.sh` scripts
+- Existing `.env` file contents
 
 ──────────────────────────────────────────────
-📜 Agent Registry
-
-| Agent Name       | Description                           | Status         |
-|------------------|----------------------------------------|----------------|
-| BreakoutAgent    | Heikin Ashi + Quantum resonance        | ACTIVE         |
-| EMAAgent         | 50/200 EMA crossover logic             | ACTIVE         |
-| MomentumAgent    | RSI, MACD, volume trend logic          | ACTIVE         |
-| RiskAgent        | Centralized risk control & sizing      | ACTIVE         |
-| WhaleSniper      | High-volume whale detector             | EXPERIMENTAL   |
-| ArbitrageAgent   | Cross-exchange spread scanner          | PLANNED        |
-
-──────────────────────────────────────────────
-
-This file is the primary rulebook for engineering agents (like Codex).
-All code contributions to /agents/ must comply with this guide.
